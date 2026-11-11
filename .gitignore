@@ -254,3 +254,9 @@ desktop.ini        # Windows
 NOTES.md           # Personal development notes  
 TODO.md            # Personal todo list
 CHANGELOG_PERSONAL.md  # Personal change tracking
+
+# Local configuration & tracking state
+config.toml
+config.py
+data/
+.local/

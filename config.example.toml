@@ -1,0 +1,8 @@
+# Copy this file to config.toml and fill in your native Editorial Manager credentials.
+# Keep config.toml private (chmod 600); it is ignored by Git.
+
+[[accounts]]
+journal_short_name = "gastro"
+journal_full_name = "Gastroenterology"
+username = "your_username"
+password = "your_password"
