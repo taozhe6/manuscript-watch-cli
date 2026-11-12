@@ -1,71 +1,89 @@
-# em-tracker
+# manuscript-watch-cli
 
-Lightweight Python CLI for checking manuscript statuses on journals running **Editorial Manager** (`editorialmanager.com`) with native username/password accounts.
+Command-line tracker and local status history ledger for academic manuscript submissions (`mwatch` / `manuscript-watch`).
 
-It logs in over standard HTTPS sessions (`requests` + `BeautifulSoup`), traverses non-empty categories on `AuthorMainMenu.aspx`, and records status transitions to local UTF-8 CSV files under `data/`.
+It polls journal submission portals over HTTPS, records status transitions to local UTF-8 CSV ledgers, and emits clean tabular or structured (`json`, `jsonl`, `tsv`) output suitable for interactive terminals, shell pipelines, and scheduled tasks.
 
-## Scope
+## Overview
 
-- Supports native Editorial Manager author login (`editorialmanager.com/<journal_code>/`).
-- Does **not** automate browser-based SSO flows (such as Elsevier SSO, Springer Nature SNAPP, or ORCID).
-- Aborts immediately without retrying when Editorial Manager reports invalid credentials or a locked account (`AccountLocked`), retrying only on transient network errors.
+- **Subcommands**: `init`, `account`, `check`, `status`, `history`, `providers`, and `doctor`.
+- **Offline History Ledger**: Appends transitions to per-manuscript `history.csv` files; `status` and `history` read local ledgers without network requests.
+- **Stream Discipline**: Diagnostic messages go to `stderr`; structured records (`--format table|json|jsonl|tsv`) go to `stdout` and honor `NO_COLOR`.
+- **Semantic Exit Codes**: `--exit-code-on-change` exits with `2` when a manuscript is newly recorded or changes status.
+- **Pluggable Architecture**: Ships with a pure-HTTP `editorial_manager` provider and discovers external provider plugins via Python package entry points.
 
-## Quick Start
+## Setup
 
 Requires Python 3.11+.
 
 ```bash
-git clone https://github.com/taozhe6/em-tracker.git
-cd em-tracker
-
 python3 -m venv .venv
-.venv/bin/pip install -r requirements.txt
-
-cp config.example.toml config.toml
-chmod 600 config.toml
+.venv/bin/pip install -e .
 ```
 
-Edit `config.toml` (or run `.venv/bin/python add_config.py` to verify login interactively with hidden password input):
-
-```toml
-[[accounts]]
-journal_short_name = "gastro"
-journal_full_name = "Gastroenterology"
-username = "your_username"
-password = "your_password"
-```
-
-`journal_short_name` is the path segment from `https://www.editorialmanager.com/<journal_short_name>/`.
+Once installed, both `mwatch` and `manuscript-watch` commands are available in `.venv/bin` (or globally when installed with `pipx` / `uv tool`).
 
 ## Usage
 
-Check all configured accounts non-interactively (suitable for scripts or cron):
+Initialize a `0600` configuration file (defaults to `~/.config/manuscript-watch/config.toml`, or `./config.toml` when present in the working directory):
 
 ```bash
-.venv/bin/python main.py --all
+mwatch init
+mwatch account add --journal gastro --name "Gastroenterology" --username alice
 ```
 
-Check a single journal without writing local CSV history:
+Poll live statuses and record any new transitions:
 
 ```bash
-.venv/bin/python main.py --journal gastro --no-save
+mwatch check
+mwatch -q check --changed-only --exit-code-on-change --format json
 ```
 
-Launch the interactive selector (also supports one-off temporary queries without saving credentials):
+Inspect recorded manuscripts and chronological status changes offline:
 
 ```bash
-.venv/bin/python main.py
+mwatch status
+mwatch history
+mwatch doctor
 ```
 
-## Status History
+## Configuration
 
-When saving is enabled (the default), status snapshots are appended to:
+`config.toml` lookup order:
+1. `--config <path>` or `$MWATCH_CONFIG`
+2. `./config.toml` (writes ledgers under `./data/`)
+3. `$XDG_CONFIG_HOME/manuscript-watch/config.toml` (writes ledgers under `$XDG_DATA_HOME/manuscript-watch/history/`)
 
-```text
-data/<username>/<journal_short_name>/<manuscript_id>_<title>/history.csv
+```toml
+[[accounts]]
+id = "gastro-main"
+provider = "editorial_manager"
+journal = "gastro"
+name = "Gastroenterology"
+username = "your_username"
+password = "your_password"
+enabled = true
 ```
 
-A new row is written only when `Status` or `StatusDate` changes compared with the previous recorded entry.
+Instead of storing `password` directly, an account entry may specify `password_env` (environment variable name) or `password_cmd` (external command printing the secret).
+
+### Built-in Provider Scope
+
+`editorial_manager` authenticates over standard HTTPS against `editorialmanager.com/<journal>/` (`role=author`), expands paginated author tables up to 500 items, and aborts without retrying when upstream reports `AccountLocked`. Journals that disable native Editorial Manager passwords in favor of browser-only SSO/ORCID login require a custom provider plugin.
+
+## Exit Codes
+
+| Code | Meaning |
+| :--- | :--- |
+| `0` | Success |
+| `1` | Invalid arguments or configuration error |
+| `2` | Status change recorded (`--exit-code-on-change`) |
+| `3` | Authentication rejected or account locked |
+| `4` | Network failure or unexpected HTML layout |
+
+## Provider Plugins
+
+Third-party or private packages can register custom providers under the `manuscript_watch_cli.providers` entry-point group by implementing `SubmissionProvider` (`name`, `description`, `verify_auth`, `fetch_submissions`) from `manuscript_watch_cli.providers.base`. Run `mwatch providers` to inspect active providers.
 
 ## License
 

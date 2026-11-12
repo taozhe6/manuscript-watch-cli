@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "manuscript-watch-cli"
+version = "0.2.0"
+description = "Command-line tracker and local status history ledger for academic manuscript submissions."
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.11"
+dependencies = [
+  "requests>=2.31.0",
+  "beautifulsoup4>=4.12.0",
+  "lxml>=5.0.0",
+]
+
+[project.scripts]
+manuscript-watch = "manuscript_watch_cli.cli:main"
+mwatch = "manuscript_watch_cli.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

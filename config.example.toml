@@ -1,8 +1,19 @@
-# Copy this file to config.toml and fill in your native Editorial Manager credentials.
-# Keep config.toml private (chmod 600); it is ignored by Git.
+# manuscript-watch-cli configuration template
+# Default lookup order:
+#   1. --config <path> or $MWATCH_CONFIG
+#   2. ./config.toml (current working directory)
+#   3. ~/.config/manuscript-watch/config.toml
+#
+# Keep this file mode 0600 (`chmod 600 config.toml`).
+# To avoid storing plaintext credentials on disk, set either
+# `password_env = "EM_GASTRO_PASSWORD"` or `password_cmd = "pass show academic/gastro"`
+# instead of `password`.
 
 [[accounts]]
-journal_short_name = "gastro"
-journal_full_name = "Gastroenterology"
+id = "gastro-main"
+provider = "editorial_manager"
+journal = "gastro"
+name = "Gastroenterology"
 username = "your_username"
 password = "your_password"
+enabled = true
