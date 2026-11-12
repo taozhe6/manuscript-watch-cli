@@ -106,6 +106,15 @@ def cmd_account_list(args: argparse.Namespace) -> int:
     return int(ExitCode.OK)
 
 
+def _prompt_if_tty(prompt: str) -> str:
+    if not sys.stdin.isatty():
+        return ""
+    try:
+        return input(prompt)
+    except EOFError:
+        return ""
+
+
 def cmd_account_add(args: argparse.Namespace) -> int:
     cfg_path = resolve_config_path(args.config)
     doc = load_raw_document(cfg_path)
@@ -114,9 +123,16 @@ def cmd_account_add(args: argparse.Namespace) -> int:
     provider_name = (args.provider or "editorial_manager").strip().lower().replace("-", "_")
     provider = get_provider(provider_name)
 
-    journal = (args.journal or input("Journal short code (e.g. gastro): ")).strip().lower()
-    name = (args.name or input(f"Display name [{journal.upper()}]: ")).strip() or journal.upper()
-    username = (args.username or input("Username: ")).strip()
+    journal = (args.journal or _prompt_if_tty("Journal short code (e.g. gastro): ")).strip().lower()
+    if not journal:
+        raise ConfigError("Journal short code is required (pass --journal).")
+    if args.name:
+        name = args.name.strip()
+    elif not args.journal and sys.stdin.isatty():
+        name = _prompt_if_tty(f"Display name [{journal.upper()}]: ").strip() or journal.upper()
+    else:
+        name = journal.upper()
+    username = (args.username or _prompt_if_tty("Username: ")).strip()
     account_id = (args.id or f"{journal}:{username}").strip()
 
     password_env = (args.password_env or "").strip()
@@ -127,10 +143,11 @@ def cmd_account_add(args: argparse.Namespace) -> int:
         if not secret and not args.no_verify:
             raise ConfigError(f"Environment variable {password_env!r} is empty; cannot verify login.")
     elif password_cmd:
-        # Verification resolves via load_accounts logic
         pass
     else:
-        secret = os.environ.get("MWATCH_PASSWORD", "") or getpass.getpass("Password (hidden): ")
+        secret = os.environ.get("MWATCH_PASSWORD", "")
+        if not secret and sys.stdin.isatty():
+            secret = getpass.getpass("Password (hidden): ")
 
     if not journal or not username or (not secret and not password_env and not password_cmd):
         raise ConfigError("Journal code, username, and credential source are required.")
