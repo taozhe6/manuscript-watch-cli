@@ -1,13 +1,5 @@
-# manuscript-watch-cli configuration template
-# Default lookup order:
-#   1. --config <path> or $MWATCH_CONFIG
-#   2. ./config.toml (current working directory)
-#   3. ~/.config/manuscript-watch/config.toml
-#
-# Keep this file mode 0600 (`chmod 600 config.toml`).
-# To avoid storing plaintext credentials on disk, set either
-# `password_env = "EM_GASTRO_PASSWORD"` or `password_cmd = "pass show academic/gastro"`
-# instead of `password`.
+# manuscript-watch-cli configuration (keep mode 0600).
+# Tip: use `password_env` or `password_cmd` when reading secrets from env or external managers.
 
 [[accounts]]
 id = "gastro-main"
@@ -16,4 +8,13 @@ journal = "gastro"
 name = "Gastroenterology"
 username = "your_username"
 password = "your_password"
-enabled = true
+enabled = false
+
+[[accounts]]
+id = "iovs-main"
+provider = "ejournalpress"
+journal = "iovs"
+name = "IOVS"
+username = "your_ejp_username"
+password_env = "EJOURNALPRESS_PASSWORD"
+enabled = false

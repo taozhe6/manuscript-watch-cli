@@ -2,15 +2,18 @@
 
 Command-line tracker and local status history ledger for academic manuscript submissions (`mwatch` / `manuscript-watch`).
 
-It polls journal submission portals over HTTPS, records status transitions to local UTF-8 CSV ledgers, and emits clean tabular or structured (`json`, `jsonl`, `tsv`) output suitable for interactive terminals, shell pipelines, and scheduled tasks.
+It polls journal submission portals over HTTPS, records status transitions (including full Day-1 chronological stage histories on eJournalPress) to local UTF-8 CSV ledgers, and emits clean tabular or structured (`json`, `jsonl`, `tsv`) output suitable for interactive terminals, shell pipelines, and scheduled tasks.
 
 ## Overview
 
 - **Subcommands**: `init`, `account`, `check`, `status`, `history`, `providers`, and `doctor`.
+- **Built-in Providers**:
+  - `editorial_manager`: pure-HTTP Editorial Manager session (`editorialmanager.com/<journal>/`, `role=author`).
+  - `ejournalpress`: pure-HTTP eJournalPress session (`<slug>.msubmit.net` such as IOVS, TVST, JOV, plus `manuscripts.jama*.com` portals when reachable without interactive CAPTCHA), verifying folder counts and backfilling complete Day-1 `dump_history_table` stage timelines (`R1` / `R2` isolated).
 - **Offline History Ledger**: Appends transitions to per-manuscript `history.csv` files; `status` and `history` read local ledgers without network requests.
 - **Stream Discipline**: Diagnostic messages go to `stderr`; structured records (`--format table|json|jsonl|tsv`) go to `stdout` and honor `NO_COLOR`.
 - **Semantic Exit Codes**: `--exit-code-on-change` exits with `2` when a manuscript is newly recorded or changes status.
-- **Pluggable Architecture**: Ships with a pure-HTTP `editorial_manager` provider and discovers external provider plugins via Python package entry points.
+- **Pluggable Architecture**: Discovers external provider plugins via Python package entry points (`manuscript_watch_cli.providers`).
 
 ## Setup
 
@@ -29,7 +32,8 @@ Initialize a `0600` configuration file (defaults to `~/.config/manuscript-watch/
 
 ```bash
 mwatch init
-mwatch account add --journal gastro --name "Gastroenterology" --username alice
+mwatch account add --provider editorial_manager --journal gastro --name "Gastroenterology" --username alice
+mwatch account add --provider ejournalpress --journal iovs --name "IOVS" --username alice --password-env EJOURNALPRESS_PASSWORD
 ```
 
 Poll live statuses and record any new transitions:
@@ -44,6 +48,7 @@ Inspect recorded manuscripts and chronological status changes offline:
 ```bash
 mwatch status
 mwatch history
+mwatch providers
 mwatch doctor
 ```
 
@@ -56,20 +61,20 @@ mwatch doctor
 
 ```toml
 [[accounts]]
-id = "gastro-main"
-provider = "editorial_manager"
-journal = "gastro"
-name = "Gastroenterology"
+id = "iovs-main"
+provider = "ejournalpress"
+journal = "iovs" # accepts short code (`iovs`, `jamaophth`) or full HTTPS URL
+name = "IOVS"
 username = "your_username"
-password = "your_password"
+password_env = "EJOURNALPRESS_PASSWORD"
 enabled = true
 ```
 
-Instead of storing `password` directly, an account entry may specify `password_env` (environment variable name) or `password_cmd` (external command printing the secret).
+Each account entry supports `password`, `password_env` (environment variable name), or `password_cmd` (external command printing the secret).
 
-### Built-in Provider Scope
+### Portal Scope & Browser Fallback
 
-`editorial_manager` authenticates over standard HTTPS against `editorialmanager.com/<journal>/` (`role=author`), expands paginated author tables up to 500 items, and aborts without retrying when upstream reports `AccountLocked`. Journals that disable native Editorial Manager passwords in favor of browser-only SSO/ORCID login require a custom provider plugin.
+`editorial_manager` and `ejournalpress` authenticate over standard HTTPS and abort without retrying when upstream reports locked credentials or interactive CAPTCHA/Turnstile challenges. Portals requiring external browser SSO/ORCID login (Elsevier SSO, Springer Nature SNAPP) or interactive Cloudflare Turnstile verification belong in the companion browser-backed trackers (`manuscript-watch` / `Manuscript Desk`).
 
 ## Exit Codes
 
@@ -78,7 +83,7 @@ Instead of storing `password` directly, an account entry may specify `password_e
 | `0` | Success |
 | `1` | Invalid arguments or configuration error |
 | `2` | Status change recorded (`--exit-code-on-change`) |
-| `3` | Authentication rejected or account locked |
+| `3` | Authentication rejected, account locked, or interactive CAPTCHA challenge |
 | `4` | Network failure or unexpected HTML layout |
 
 ## Provider Plugins

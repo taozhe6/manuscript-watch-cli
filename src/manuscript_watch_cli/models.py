@@ -7,6 +7,7 @@ from enum import IntEnum
 import hashlib
 import re
 from typing import Any
+from urllib.parse import urlsplit
 
 
 class ExitCode(IntEnum):
@@ -41,6 +42,28 @@ def sanitize_token(text: str, max_length: int = 80) -> str:
     return cleaned[:max_length] or "untitled"
 
 
+def _normalize_journal_slug(raw: str) -> str:
+    token = raw.strip()
+    if token.startswith(("https://", "http://")):
+        parsed = urlsplit(token)
+        host = (parsed.hostname or "").lower()
+        msubmit = re.fullmatch(r"([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)\.msubmit\.net", host)
+        if msubmit:
+            return f"ejp-{msubmit.group(1)}"
+        jama = re.fullmatch(r"manuscripts\.(jama(?:[a-z0-9-]{0,57}[a-z0-9])?)\.com", host)
+        if jama:
+            return f"ejp-{jama.group(1)}"
+        parts = [p for p in parsed.path.strip("/").split("/") if p]
+        if host in ("www.editorialmanager.com", "editorialmanager.com") and parts:
+            token = parts[0]
+        else:
+            raise ConfigError(f"Unsupported journal URL: {raw!r}")
+    slug = token.strip("/").lower()
+    if not slug or not slug.replace("-", "").replace("_", "").isalnum():
+        raise ConfigError(f"Invalid journal code: {raw!r}")
+    return slug
+
+
 @dataclass(frozen=True)
 class TargetAccount:
     journal: str
@@ -53,10 +76,7 @@ class TargetAccount:
 
     @property
     def journal_slug(self) -> str:
-        slug = self.journal.strip().strip("/").lower()
-        if not slug or not slug.replace("-", "").replace("_", "").isalnum():
-            raise ConfigError(f"Invalid journal code: {self.journal!r}")
-        return slug
+        return _normalize_journal_slug(self.journal)
 
     @property
     def effective_id(self) -> str:
@@ -87,6 +107,7 @@ class ManuscriptSnapshot:
     status: str
     docid: str = ""
     guid: str = ""
+    stage_history: tuple[tuple[str, str], ...] = ()
 
     @property
     def stable_id(self) -> str:
@@ -102,6 +123,10 @@ class ManuscriptSnapshot:
     def to_dict(self) -> dict[str, Any]:
         data = asdict(self)
         data["stable_id"] = self.stable_id
+        data["stage_history"] = [
+            {"status": status, "status_date": status_date}
+            for status, status_date in self.stage_history
+        ]
         return data
 
 

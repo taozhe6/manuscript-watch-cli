@@ -28,6 +28,39 @@ LEDGER_COLUMNS = [
 ]
 
 
+def _make_row(checked_at: str, snapshot: ManuscriptSnapshot, status: str, status_date: str) -> dict[str, str]:
+    return {
+        "Timestamp": checked_at,
+        "Provider": snapshot.provider,
+        "Journal": snapshot.journal,
+        "JournalName": snapshot.journal_name,
+        "Username": snapshot.username,
+        "Category": snapshot.category,
+        "ManuscriptNumber": snapshot.manuscript_number,
+        "Title": snapshot.title,
+        "InitialDateSubmitted": snapshot.initial_date_submitted,
+        "StatusDate": status_date,
+        "Status": status,
+    }
+
+
+def _missing_stage_tail(
+    existing: list[dict[str, str]], stages: tuple[tuple[str, str], ...]
+) -> list[tuple[str, str]]:
+    existing_pairs = [(row.get("Status", ""), row.get("StatusDate", "")) for row in existing]
+    if not existing_pairs:
+        return list(stages)
+    stage_list = list(stages)
+    max_overlap = min(len(existing_pairs), len(stage_list))
+    for k in range(max_overlap, 0, -1):
+        if existing_pairs[-k:] == stage_list[:k]:
+            return stage_list[k:]
+    if existing_pairs[-1] in stage_list:
+        idx = len(stage_list) - 1 - stage_list[::-1].index(existing_pairs[-1])
+        return stage_list[idx + 1 :]
+    return stage_list
+
+
 def record_snapshot(
     data_dir: Path,
     snapshot: ManuscriptSnapshot,
@@ -66,24 +99,13 @@ def record_snapshot(
         with csv_path.open("r", encoding="utf-8-sig", newline="") as handle:
             existing = list(csv.DictReader(handle))
 
-    new_row = {
-        "Timestamp": checked_at,
-        "Provider": snapshot.provider,
-        "Journal": snapshot.journal,
-        "JournalName": snapshot.journal_name,
-        "Username": snapshot.username,
-        "Category": snapshot.category,
-        "ManuscriptNumber": snapshot.manuscript_number,
-        "Title": snapshot.title,
-        "InitialDateSubmitted": snapshot.initial_date_submitted,
-        "StatusDate": snapshot.status_date,
-        "Status": snapshot.status,
-    }
+    stages = snapshot.stage_history or ((snapshot.status, snapshot.status_date),)
 
     if not existing:
+        seed_rows = [_make_row(checked_at, snapshot, st, dt) for st, dt in stages]
         if not dry_run:
             active_dir.mkdir(parents=True, exist_ok=True)
-            _write_csv(csv_path, [new_row])
+            _write_csv(csv_path, seed_rows)
         return TransitionResult(
             change="created",
             snapshot=snapshot,
@@ -96,6 +118,31 @@ def record_snapshot(
     last = existing[-1]
     prev_status = last.get("Status", "")
     prev_date = last.get("StatusDate", "")
+
+    if snapshot.stage_history:
+        missing = _missing_stage_tail(existing, snapshot.stage_history)
+        if not missing:
+            return TransitionResult(
+                change="unchanged",
+                snapshot=snapshot,
+                previous_status=prev_status,
+                previous_status_date=prev_date,
+                checked_at=checked_at,
+                history_path=str(csv_path),
+            )
+        if not dry_run:
+            active_dir.mkdir(parents=True, exist_ok=True)
+            existing.extend(_make_row(checked_at, snapshot, st, dt) for st, dt in missing)
+            _write_csv(csv_path, existing)
+        return TransitionResult(
+            change="updated",
+            snapshot=snapshot,
+            previous_status=prev_status,
+            previous_status_date=prev_date,
+            checked_at=checked_at,
+            history_path=str(csv_path),
+        )
+
     if prev_status == snapshot.status and prev_date == snapshot.status_date:
         return TransitionResult(
             change="unchanged",
@@ -108,7 +155,7 @@ def record_snapshot(
 
     if not dry_run:
         active_dir.mkdir(parents=True, exist_ok=True)
-        existing.append(new_row)
+        existing.append(_make_row(checked_at, snapshot, snapshot.status, snapshot.status_date))
         _write_csv(csv_path, existing)
 
     return TransitionResult(
