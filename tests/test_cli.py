@@ -11,7 +11,7 @@ import unittest
 
 from manuscript_watch_cli.cli import main
 from manuscript_watch_cli.ledger import record_snapshot
-from manuscript_watch_cli.models import ExitCode, ManuscriptSnapshot, TargetAccount
+from manuscript_watch_cli.models import ConfigError, ExitCode, ManuscriptSnapshot, TargetAccount, _normalize_journal_slug
 from manuscript_watch_cli.providers import register_provider
 from manuscript_watch_cli.providers.editorial_manager import (
     build_full_page_url,
@@ -110,6 +110,11 @@ class ManuscriptWatchCliTests(unittest.TestCase):
         self.assertEqual(snaps[0].guid, "ABCD-1234")
         self.assertEqual(snaps[0].title, "Automated Endoscopy Benchmark")
         self.assertEqual(snaps[0].status, "Under Review")
+
+    def test_elsevier_submission_urls_point_to_browser_trackers(self) -> None:
+        for host in ("submit.elsevier.com", "submit.editorialmanager.com"):
+            with self.assertRaisesRegex(ConfigError, "Elsevier Submission portal .* browser SSO"):
+                _normalize_journal_slug(f"https://{host}/THEOCULARSURFACE/submissions")
 
     def test_ledger_transitions_and_folder_rename(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

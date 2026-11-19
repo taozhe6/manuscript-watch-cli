@@ -74,7 +74,7 @@ Each account entry supports `password`, `password_env` (environment variable nam
 
 ### Portal Scope & Browser Fallback
 
-`editorial_manager` and `ejournalpress` authenticate over standard HTTPS and abort without retrying when upstream reports locked credentials or interactive CAPTCHA/Turnstile challenges. Portals requiring external browser SSO/ORCID login (Elsevier SSO, Springer Nature SNAPP) or interactive Cloudflare Turnstile verification belong in the companion browser-backed trackers (`manuscript-watch` / `Manuscript Desk`).
+`editorial_manager` and `ejournalpress` authenticate over standard HTTPS and abort without retrying when upstream reports locked credentials or interactive CAPTCHA/Turnstile challenges. Portals requiring external browser SSO/ORCID login (Elsevier Submission on `submit.elsevier.com` / `submit.editorialmanager.com`, Springer Nature SNAPP) or interactive Cloudflare Turnstile verification belong in the companion browser-backed trackers (`manuscript-watch` / `Manuscript Desk`).
 
 ## Exit Codes
 

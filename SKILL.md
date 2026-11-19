@@ -9,8 +9,8 @@ description: 使用纯 HTTP 命令行工具 mwatch（manuscript-watch-cli）管�
 
 工作目录为 `/Users/taozhe/Projects/manuscript-watch-cli`，命令入口为 `.venv/bin/mwatch`。
 
-- 适用范围：支持原生账号密码直登的 `editorial_manager`（`editorialmanager.com/<journal>/`）与未设交互式人机验证的 `ejournalpress`（`<slug>.msubmit.net` 等），适合轻量管道、服务器定时脚本与 `--format json|jsonl|tsv` 组合调用。
-- 浏览器会话分流：遇到 Elsevier SSO、Springer Nature ORCID，或开启交互式 Cloudflare Turnstile 的自定义域名站点（返回退出码 `3` 并提示 CAPTCHA/Turnstile），切换到持久化浏览器会话的 `manuscript-watch` 或 `Manuscript Desk`。
+- 适用范围：支持原生账号密码直登的 `editorial_manager`（`www.editorialmanager.com/<journal>/`）与未设交互式人机验证的 `ejournalpress`（`<slug>.msubmit.net` 等），适合轻量管道、服务器定时脚本与 `--format json|jsonl|tsv` 组合调用。
+- 浏览器会话分流：遇到 Elsevier Submission / SSO（`submit.elsevier.com`、`submit.editorialmanager.com`）、Springer Nature ORCID，或开启交互式 Cloudflare Turnstile 的自定义域名站点（返回退出码 `3` 并提示 CAPTCHA/Turnstile），切换到持久化浏览器会话的 `manuscript-watch` 或 `Manuscript Desk`。
 
 ## 常用命令
 

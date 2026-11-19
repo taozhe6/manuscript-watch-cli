@@ -54,6 +54,11 @@ def _normalize_journal_slug(raw: str) -> str:
         if jama:
             return f"ejp-{jama.group(1)}"
         parts = [p for p in parsed.path.strip("/").split("/") if p]
+        if host in ("submit.elsevier.com", "submit.editorialmanager.com"):
+            raise ConfigError(
+                f"Elsevier Submission portal ({host}) requires browser SSO; "
+                f"use browser-backed manuscript-watch or Manuscript Desk instead: {raw!r}"
+            )
         if host in ("www.editorialmanager.com", "editorialmanager.com") and parts:
             token = parts[0]
         else:
