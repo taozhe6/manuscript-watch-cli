@@ -31,7 +31,7 @@ DEFAULT_HEADERS = {
 }
 
 MANUSCRIPT_RE = re.compile(
-    r"\b(?:[A-Z][A-Z0-9]{1,11}-\d{2}|[A-Z]{2,10}\d{2})-\d+(?:-?R\d+)?\b", re.I
+    r"\b(?:[A-Z][A-Z0-9]{1,11}-\d{2}|[A-Z]{2,10}\d{2})-\d+(?:-T)?(?:-?R\d+)?\b", re.I
 )
 ENTRY_NAMES = {
     "live": "Live Manuscripts",
